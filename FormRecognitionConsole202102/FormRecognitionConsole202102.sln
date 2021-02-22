@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31005.135
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FormRecognitionConsole202102", "FormRecognitionConsole202102.csproj", "{522DBB37-0893-4064-9A52-D4508A36553A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{522DBB37-0893-4064-9A52-D4508A36553A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{522DBB37-0893-4064-9A52-D4508A36553A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{522DBB37-0893-4064-9A52-D4508A36553A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{522DBB37-0893-4064-9A52-D4508A36553A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C87A64BB-0C04-46CF-AADC-74E676EC65B9}
+	EndGlobalSection
+EndGlobal
