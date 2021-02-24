@@ -1,6 +1,8 @@
 ﻿using Azure;
 using Azure.AI.FormRecognizer;
 using Azure.AI.FormRecognizer.Models;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Specialized;
 using System;
 using System.IO;
 using System.Threading.Tasks;
@@ -27,23 +29,43 @@ namespace FormRecognitionConsole202102
             switch (type)
             {
                 case "1": // local file
-                    Console.WriteLine("Type your local file path to recognize...");
-                    var imgFilePath = Console.ReadLine();
-                    var imgStream = File.Open(imgFilePath, FileMode.Open);
-                    forms = await RecognizeFormFromLocalAsync(client, frModelId, imgStream);
+                    Console.WriteLine("Type your local folder path to recognize...");
+                    var imgFolderPath = Console.ReadLine();
+                    var imgFiles = Directory.GetFiles(imgFolderPath);
 
-                    Console.WriteLine("Got Analyzed Result...");
-                    ShowRecognizedResult(forms);
+                    foreach (var img in imgFiles)
+                    {
+                        var imgStream = File.Open(img, FileMode.Open);
+                        forms = await RecognizeFormFromLocalAsync(client, frModelId, imgStream);
+
+                        Console.WriteLine("Got Analyzed Result: " + Path.GetFileName(img));
+                        //ShowRecognizedResult(forms);
+                        var resultText = await LogRecognizedResultAsync(forms);
+                        await File.WriteAllTextAsync(Path.Join(imgFolderPath, (Path.GetFileNameWithoutExtension(img) + ".txt")), resultText);
+                    }
 
                     break;
 
                 case "2": // blob
-                    Console.WriteLine("Type your blob url to recognize...");
-                    var imgUrl = Console.ReadLine();
-                    forms = await RecognizeFormFromUrlAsync(client, frModelId, imgUrl);
+                    Console.WriteLine("Type your blob container url to recognize...");
+                    var imgContainerPath = Console.ReadLine();
+                    Console.WriteLine("Type your local folder path to save results...");
+                    var resultFolderPath = Console.ReadLine();
 
-                    Console.WriteLine("Got Analyzed Result...");
-                    ShowRecognizedResult(forms);
+                    var imgContainer = new BlobContainerClient(new Uri(imgContainerPath));
+                    var imgBlobs = imgContainer.GetBlobsAsync();
+
+                    await foreach (var imgBlobItem in imgBlobs)
+                    {
+                        var imBlob = imgContainer.GetBlockBlobClient(imgBlobItem.Name).Uri.ToString();
+                        forms = await RecognizeFormFromUrlAsync(client, frModelId, imBlob);
+
+                        Console.WriteLine("Got Analyzed Result: " + imgBlobItem.Name);
+                        //ShowRecognizedResult(forms);
+                        var resultText = await LogRecognizedResultAsync(forms);
+
+                        await File.WriteAllTextAsync(Path.Join(resultFolderPath, (Path.GetFileNameWithoutExtension(imgBlobItem.Name) + ".txt")), resultText);
+                    }
 
                     break;
 
@@ -69,43 +91,84 @@ namespace FormRecognitionConsole202102
             return forms;            
         }
 
-        private static void ShowRecognizedResult(RecognizedFormCollection forms)
+        //private static void ShowRecognizedResult(RecognizedFormCollection forms)
+        //{
+        //    foreach (RecognizedForm form in forms)
+        //    {
+        //        Console.WriteLine($"Custom Model Name: {form.FormType}");
+        //        Console.WriteLine($"------");
+        //        Console.WriteLine($"Fields:");
+        //        foreach (FormField field in form.Fields.Values)
+        //        {
+        //            Console.WriteLine($"'{field.Name}':");
+
+        //            if (field.LabelData != null)
+        //            {
+        //                Console.WriteLine($"    Label: '{field.LabelData.Text}'");
+        //            }
+
+        //            Console.WriteLine($"    Value: '{field.ValueData.Text}'");
+        //            Console.WriteLine($"    Confidence: '{field.Confidence}'");
+        //        }
+        //        Console.WriteLine($"------");
+        //        Console.WriteLine($"Table data:");
+        //        foreach (FormPage page in form.Pages)
+        //        {
+        //            for (int i = 0; i < page.Tables.Count; i++)
+        //            {
+        //                FormTable table = page.Tables[i];
+        //                Console.WriteLine($"Table {i} has {table.RowCount} rows and {table.ColumnCount} columns.");
+        //                foreach (FormTableCell cell in table.Cells)
+        //                {
+        //                    Console.WriteLine($"    Cell ({cell.RowIndex}, {cell.ColumnIndex}) contains {(cell.IsHeader ? "header" : "text")}: '{cell.Text}'");
+        //                }
+        //            }
+        //        }
+
+        //        Console.WriteLine($"------");
+        //        Console.WriteLine($"Recognized Result End");
+        //    }
+        //}
+
+        private static async Task<string> LogRecognizedResultAsync(RecognizedFormCollection forms)
         {
+            string resultText = null;
+
             foreach (RecognizedForm form in forms)
             {
-                Console.WriteLine($"Custom Model Name: {form.FormType}");
-                Console.WriteLine($"------");
-                Console.WriteLine($"Fields:");
+                resultText += $"Custom Model Name: {form.FormType}\n";
+                resultText += $"------\nFields:\n";
                 foreach (FormField field in form.Fields.Values)
                 {
-                    Console.WriteLine($"'{field.Name}':");
+                    resultText += $"'{field.Name}':\n";
 
                     if (field.LabelData != null)
                     {
-                        Console.WriteLine($"    Label: '{field.LabelData.Text}'");
+                        resultText += $"    Label: '{field.LabelData.Text}'\n";
                     }
 
-                    Console.WriteLine($"    Value: '{field.ValueData.Text}'");
-                    Console.WriteLine($"    Confidence: '{field.Confidence}'");
+                    resultText += $"    Value: '{field.ValueData.Text}'\n";
+                    resultText += $"    Confidence: '{field.Confidence}'\n";
                 }
-                Console.WriteLine($"------");
-                Console.WriteLine($"Table data:");
+                resultText += $"------\nTable data:\n";
                 foreach (FormPage page in form.Pages)
                 {
                     for (int i = 0; i < page.Tables.Count; i++)
                     {
                         FormTable table = page.Tables[i];
-                        Console.WriteLine($"Table {i} has {table.RowCount} rows and {table.ColumnCount} columns.");
+                        resultText += $"Table {i} has {table.RowCount} rows and {table.ColumnCount} columns.\n";
                         foreach (FormTableCell cell in table.Cells)
                         {
-                            Console.WriteLine($"    Cell ({cell.RowIndex}, {cell.ColumnIndex}) contains {(cell.IsHeader ? "header" : "text")}: '{cell.Text}'");
+                            resultText += $"    Cell ({cell.RowIndex}, {cell.ColumnIndex}) contains {(cell.IsHeader ? "header" : "text")}: '{cell.Text}'\n";
                         }
                     }
                 }
 
-                Console.WriteLine($"------");
-                Console.WriteLine($"Recognized Result End");
+                resultText += $"------\nRecognized Result End";
             }
+
+            return resultText;
         }
+
     }
 }
